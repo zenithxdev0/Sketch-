@@ -1,6 +1,7 @@
+fastapi
+uvicorn
+gunicorn
 pyrogram
 tgcrypto
-opencv-python
+opencv-python-headless
 numpy
-fastapi
-gunicorn
