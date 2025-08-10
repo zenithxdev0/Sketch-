@@ -1,6 +1,7 @@
 import os
 import cv2
 import numpy as np
+import asyncio
 from fastapi import FastAPI
 from pyrogram import Client, filters
 from pyrogram.types import Message
@@ -13,7 +14,7 @@ API_HASH = os.environ.get("API_HASH", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 # ======================
-# FASTAPI APP (for Render)
+# FASTAPI APP (for Render health check)
 # ======================
 web_app = FastAPI()
 
@@ -29,24 +30,31 @@ bot = Client("sketch_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN
 @bot.on_message(filters.photo)
 async def sketch_handler(_, message: Message):
     file_path = await message.download()
+
+    # Read and process image
     image = cv2.imread(file_path)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     inverted = cv2.bitwise_not(gray)
     blurred = cv2.GaussianBlur(inverted, (21, 21), 0)
     inverted_blur = cv2.bitwise_not(blurred)
     sketch = cv2.divide(gray, inverted_blur, scale=256.0)
+
     output_path = "sketch.png"
     cv2.imwrite(output_path, sketch)
+
+    # Send sketch back
     await message.reply_photo(output_path, caption="🖌 Here’s your humanised sketch!")
+
+    # Cleanup
     os.remove(file_path)
     os.remove(output_path)
 
 # ======================
-# START BOT WITH FASTAPI
+# START BOT WHEN FASTAPI STARTS
 # ======================
 @web_app.on_event("startup")
 async def startup_event():
-    await bot.start()
+    asyncio.create_task(bot.start())
 
 @web_app.on_event("shutdown")
 async def shutdown_event():
