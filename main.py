@@ -64,5 +64,3 @@ async def sketch_handler(_, message: Message):
 # ======================
 def start_bot():
     bot.run()
-
-threading.Thread(target=start_bot, daemon=True).start()
