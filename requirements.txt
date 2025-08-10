@@ -1,0 +1,6 @@
+pyrogram
+tgcrypto
+opencv-python
+numpy
+fastapi
+gunicorn
