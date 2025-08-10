@@ -1,61 +1,68 @@
 import os
 import cv2
 import numpy as np
-import tempfile
 import threading
-
+from fastapi import FastAPI
 from pyrogram import Client, filters
 from pyrogram.types import Message
-from fastapi import FastAPI
 
-# Environment variables
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-API_ID = int(os.environ.get("API_ID"))
-API_HASH = os.environ.get("API_HASH")
+# ======================
+# ENVIRONMENT VARIABLES
+# ======================
+API_ID = int(os.environ.get("API_ID", ""))
+API_HASH = os.environ.get("API_HASH", "")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
-# Pyrogram client
-app_bot = Client(
-    "sketch_bot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN
-)
-
-# FastAPI app for HTTP ping
+# ======================
+# FASTAPI APP (for Render)
+# ======================
 web_app = FastAPI()
 
 @web_app.get("/")
 def home():
-    return {"status": "Bot is running"}
+    return {"status": "Bot is running on Render!"}
 
-def photo_to_sketch(path: str) -> str:
-    """Convert image to pencil sketch and return output file path."""
-    img = cv2.imread(path, cv2.IMREAD_COLOR)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+# ======================
+# TELEGRAM BOT
+# ======================
+bot = Client("sketch_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
+@bot.on_message(filters.photo)
+async def sketch_handler(_, message: Message):
+    # Download image
+    file_path = await message.download()
+    
+    # Read image
+    image = cv2.imread(file_path)
+
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Invert colors
     inverted = cv2.bitwise_not(gray)
+
+    # Blur image
     blurred = cv2.GaussianBlur(inverted, (21, 21), 0)
+
+    # Create pencil sketch
     inverted_blur = cv2.bitwise_not(blurred)
     sketch = cv2.divide(gray, inverted_blur, scale=256.0)
 
-    output_path = tempfile.mktemp(suffix=".png")
+    # Save sketch
+    output_path = "sketch.png"
     cv2.imwrite(output_path, sketch)
-    return output_path
 
-@app_bot.on_message(filters.photo)
-async def handle_photo(client: Client, message: Message):
-    await message.reply_chat_action("upload_photo")
-    file_path = await message.download()
-    sketch_path = photo_to_sketch(file_path)
-    await message.reply_photo(sketch_path, caption="🎨 Here’s your humanised sketch!")
+    # Send back to user
+    await message.reply_photo(output_path, caption="🖌 Here’s your humanised sketch!")
+
+    # Cleanup
     os.remove(file_path)
-    os.remove(sketch_path)
+    os.remove(output_path)
 
-@app_bot.on_message(filters.command("start"))
-async def start(client: Client, message: Message):
-    await message.reply_text("👋 Send me a photo and I’ll turn it into a human-like pencil sketch!")
+# ======================
+# START BOT IN BACKGROUND
+# ======================
+def start_bot():
+    bot.run()
 
-def run_bot():
-    app_bot.run()
-
-# Start Pyrogram bot in a separate thread
-threading.Thread(target=run_bot, daemon=True).start()
+threading.Thread(target=start_bot, daemon=True).start()
