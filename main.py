@@ -1,7 +1,6 @@
 import os
 import cv2
 import numpy as np
-import asyncio
 from fastapi import FastAPI
 from pyrogram import Client, filters
 from pyrogram.types import Message
@@ -14,7 +13,7 @@ API_HASH = os.environ.get("API_HASH", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 # ======================
-# FASTAPI APP
+# FASTAPI APP (for Render)
 # ======================
 web_app = FastAPI()
 
@@ -43,11 +42,11 @@ async def sketch_handler(_, message: Message):
     os.remove(output_path)
 
 # ======================
-# LIFESPAN HANDLER
+# START BOT WITH FASTAPI
 # ======================
 @web_app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(bot.start())
+    await bot.start()
 
 @web_app.on_event("shutdown")
 async def shutdown_event():
