@@ -14,4 +14,5 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["gunicorn", "main:web_app", "-b", "0.0.0.0:8080"]
+CMD ["gunicorn", "main:web_app", "-b", "0.0.0.0:8080", "-k", "uvicorn.workers.UvicornWorker"]
+
